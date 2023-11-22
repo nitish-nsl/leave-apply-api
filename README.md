@@ -5,9 +5,9 @@
 2. deletion of user's data from redis after a set time interval
 
 ### development server:
-216.48.182.108
-digitalceo
-P@ssword12
+216.48.182.108   
+digitalceo   
+P@ssword12   
 
 ### dir in server:
 /home/digitalceo/projects/lms
