@@ -82,8 +82,5 @@ async def apply_leave(data: Data):
     next_question = get_next_question(user_id)
     return next_question
 
-for key in r.keys():
-    print(key)
-
-# if __name__ == '__main__':
-#     uvicorn.run('lms_main:app', host='0.0.0.0', port=6969, log_level="info", reload=True)
+if __name__ == '__main__':
+    uvicorn.run('lms_main:app', host='0.0.0.0', port=6969, log_level="info", reload=True)
