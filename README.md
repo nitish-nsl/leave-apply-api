@@ -5,15 +5,11 @@
 2. deletion of user's data from redis after a set time interval
 
 ### development server:
-216.48.182.108   
-digitalceo   
-P@ssword12   
-
-### dir in server:
-/home/digitalceo/projects/lms
-
-### conda environment:
-lms_redis
+ip: 216.48.182.108    
+username: digitalceo     
+password: P@ssword12    
+dir in server: /home/digitalceo/projects/lms    
+conda environment: lms_redis    
 
 ### how to run the api:-
 1. login to server in xshell
