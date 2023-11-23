@@ -3,6 +3,7 @@ from fastapi import FastAPI
 import uvicorn
 import inspect
 import redis
+import re
 
 r = redis.Redis(host='localhost', port=6379, db=1, decode_responses=True)
 
@@ -11,6 +12,40 @@ app = FastAPI()
 class Data(BaseModel):
     auth_token: str
     user_resp : str
+
+
+
+invalidResponseQuestions={"start_date": "please enter in following format(YYYY-MM-DD)",
+               "end_date": "please enter in following format (YYYY-MM-DD)",
+               "reason": "Please mention the reason",
+               "leave_type": "Please enter either consolidated or special only",
+               "partial_leaves": "Any partial leaves?",
+               "partial_leaves_yes":["please enter the date in following format ","please enter the time(forenoon or Afternoon)"],
+               "no_leaves": "please enter the numerical value ",
+               "attachment": "Any attachments?"}
+
+regexforEachQuestions={"start_date": re.compile("^(([0-9]{2})?[0-9]{2})(\/|-)(1[0-2]|0?[1-9])\2(3[01]|[12][0-9]|0?[1-9])$"),
+               "end_date":re.compile("^(([0-9]{2})?[0-9]{2})(\/|-)(1[0-2]|0?[1-9])\2(3[01]|[12][0-9]|0?[1-9])$"),
+               "reason": re.compile("[a-zA-Z]+"),
+               "leave_type": re.compile(r'consolidated|special', re.IGNORECASE),
+               "partial_leaves": "Any partial leaves?",
+               "no_leaves": re.compile("[0-9]+"),
+               "attachment": "Any attachments?"
+
+}
+
+
+
+extractedData=""
+
+def validate_the_response(key,response):
+    pattermatch=regexforEachQuestions[key].findall(response)
+    if(pattermatch):
+        extractedData=pattermatch.group()
+        return True
+
+
+    return False
 
 def get_all(user_id):
     response = r.hgetall(user_id)
@@ -33,12 +68,15 @@ def create_user(user_id):
     }
     r.hset(user_id, mapping=mapping)
 
+
+
 def get_question_for_key(key):
     mapping = {"start_date": "What is the start date? (YYYY-MM-DD)",
                "end_date": "What is the end date? (YYYY-MM-DD)",
                "reason": "Please mention the reason",
                "leave_type": "Do you want to apply for consolidated or special leave?",
                "partial_leaves": "Any partial leaves?",
+               "partial_leaves_yes":["please enter the date in following format ","please enter the time(forenoon or Afternoon)"],
                "no_leaves": "What is the number of leaves?",
                "attachment": "Any attachments?"}
     return mapping[key]
@@ -57,6 +95,7 @@ def get_next_question(user_id):
         return question
     else:
         data = get_all(user_id)
+        ## Call NHmind Apply leave post request 
         data["status"] = "leave applied"
         return data
         
@@ -70,17 +109,20 @@ def user_exists(user_id):
 async def health_check():
     return {'health_status': 'ok'}
 
-@app.post("/apply_leave")
+@app.get("/apply_leave")
 async def apply_leave(data: Data):
     user_id = data.auth_token
     user_resp = data.user_resp
     if user_exists(user_id):                                       
         param = get_next_param(user_id)
-        store(user_id, param, user_resp)
+        if(validate_the_response(param,user_resp)):
+            store(user_id, param, extractedData)
+        else:
+            return invalidResponseQuestions[param]
     else:
         create_user(user_id)
     next_question = get_next_question(user_id)
     return next_question
 
 if __name__ == '__main__':
-    uvicorn.run('lms_main:app', host='0.0.0.0', port=6969, log_level="info", reload=True)
+    uvicorn.run('lms_main:app', host='127.0.0.1', port=6969, log_level="info", reload=True)
