@@ -4,6 +4,7 @@ import uvicorn
 import inspect
 import redis
 import re
+from datetime import datetime
 
 r = redis.Redis(host='127.0.0.1', port=6379, db=1, decode_responses=True)
 
@@ -24,6 +25,10 @@ invalidResponseQuestions = {"start_date": "please enter in following format(YYYY
                             "partial_leaves_time": "please enter the time(forenoon or Afternoon)",
                             "no_leaves": "please enter the numerical value ",
                             }
+
+invalidDatavalidationQuestions={"end_date":"The end date must be greater than the start date",
+                                "partial_leaves_date":"The leave date must fall within the range of the start and end dates"}
+
 
 regexforEachQuestions = {"start_date": re.compile(r"(([0-9]{4}))(\/|-)(1[0-2]|0?[1-9])\3(3[01]|[12][0-9]|0?[1-9])"),
                          "end_date": re.compile(r"(([0-9]{4}))(\/|-)(1[0-2]|0?[1-9])\3(3[01]|[12][0-9]|0?[1-9])"),
@@ -48,7 +53,22 @@ def validate_the_response(key, response):
 
     return [False]
 
-
+def validate_date(key,data,response):
+    startDate=datetime.strptime(data["start_date"], "%Y-%m-%d").date()
+    if (key=="end_date"):
+        endDate=datetime.strptime(response, "%Y-%m-%d").date()
+        if(startDate>endDate):
+            raise("Invalid date expection")
+    elif(key=="partial_leaves_date"):
+        endDate=datetime.strptime(data['end_date'], "%Y-%m-%d").date()
+        partialDate=datetime.strptime(response, "%Y-%m-%d").date()
+        if(partialDate<startDate or partialDate>endDate):
+            raise("Invalid date expection")
+            
+        
+    
+    
+    
 def get_all(user_id):
     response = r.hgetall(user_id)
     return response
@@ -56,6 +76,10 @@ def get_all(user_id):
 
 def store(user_id, arg, response):
     curr_value = get_all(user_id)
+    
+    if(arg=="end_date" or arg=="partial_leaves_date"):
+       validate_date(arg, curr_value,response)
+    
     if(arg=="partial_leaves_date" or arg=="partial_leaves_time"):
        curr_value[arg] = curr_value[arg]+response+","
     else:
@@ -176,7 +200,10 @@ async def apply_leave(data: Data):
         param = get_curr_param(user_id)
         patternMatch = validate_the_response(param, user_resp)
         if (patternMatch[0]):
-            store(user_id, param, patternMatch[1])
+            try:
+                store(user_id, param, patternMatch[1])
+            except:
+                return invalidDatavalidationQuestions[param]
         else:
             return invalidResponseQuestions[param]
     else:
