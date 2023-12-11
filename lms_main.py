@@ -49,7 +49,7 @@ questionsList = ["from_date", "to_date", "reason", "leave_type", "apply_partial_
 
 ttl_in_seconds = 86400  # one day
 
-third_party_url = "https://nhmind.nslhub.com/backend_services/api/create_leave_record"
+third_party_url = "https://testnhm.nslhub.com/backend_services/api/external_endpoints/create_leave_record"
 
 headers = {
     'Content-Type': 'application/json',
