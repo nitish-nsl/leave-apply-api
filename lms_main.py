@@ -28,19 +28,19 @@ invalidResponseQuestions = {"from_date": "please enter in following format(DD-MM
                             "leave_type": "Please enter either consolidated or special only",
                             "apply_partial_leave": "Any partial leaves?(yes or No)",
                             "partial_leaves_date": "please enter the date in following format((DD-MM-YYYY))",
-                            "partial_leaves_time": "please enter the time(forenoon or Afternoon or Working)",
+                            "partial_leaves_time": "please enter the time(Forenoon or Afternoon or Working)",
                             }
 
 invalidDatavalidationQuestions = {"to_date": "The end date must be greater than or equal to start date",
-                                  "partial_leaves_date": "The leave date must fall within the range of the start and end dates"}
+                                  "partial_leaves_date": "The Partial leave date must fall within the range of the start and end dates"}
 
 
-regexforEachQuestions = {"from_date": re.compile(r"((3[01]|[12][0-9]|0?[1-9]))(\/|-)(1[0-2]|0?[1-9])\3([0-9]{4})"),
-                         "to_date": re.compile(r"((3[01]|[12][0-9]|0?[1-9]))(\/|-)(1[0-2]|0?[1-9])\3([0-9]{4})"),
+regexforEachQuestions = {"from_date": re.compile(r"((3[01]|[12][0-9]|0?[1-9]))(\/|-)(1[0-2]|0?[1-9])\3([0-9]{4,4})"),
+                         "to_date": re.compile(r"((3[01]|[12][0-9]|0?[1-9]))(\/|-)(1[0-2]|0?[1-9])\3([0-9]{4,4})"),
                          "reason": re.compile("[a-zA-Z]+"),
                          "leave_type": re.compile(r'consolidated|special', re.IGNORECASE),
                          "apply_partial_leave": re.compile(r'yes|No', re.IGNORECASE),
-                         "partial_leaves_date": re.compile(r"((3[01]|[12][0-9]|0?[1-9]))(\/|-)(1[0-2]|0?[1-9])\3([0-9]{4})"),
+                         "partial_leaves_date": re.compile(r"((3[01]|[12][0-9]|0?[1-9]))(\/|-)(1[0-2]|0?[1-9])\3([0-9]{4,4})"),
                          "partial_leaves_time": re.compile(r'forenoon|Afternoon|Working', re.IGNORECASE),
 
                          }
@@ -188,7 +188,7 @@ def saveData(user_id):
 
                 # PartialLeaveCount
                 if (partialLeavesTime[i].lower() == "working"):
-                    partialLeaveCount = partialLeaveCount-1
+                    partialLeaveCount = partialLeaveCount+1
                 else:
                     partialLeaveCount = partialLeaveCount+0.5
 
@@ -231,7 +231,8 @@ def saveData(user_id):
         
         except Exception as e:
             r.delete(user_id)
-            return "An error occurred while applying leave...... please try again later"
+            print("error is "+ e)
+            return "An error occurred while applying leave. Please try again later."
                     
 
     
@@ -265,7 +266,7 @@ async def health_check():
     return {'health_status': 'ok'}
 
 
-@app.post("/apply_leave")
+@app.post("/action/apply_leave")
 async def apply_leave(data: Data):
     auth_token = data.auth_token
     user_resp = data.question[4:].strip()
