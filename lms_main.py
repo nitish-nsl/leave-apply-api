@@ -6,6 +6,7 @@ import re
 from datetime import datetime
 import json
 import requests
+import time
 
 r = redis.Redis(host='127.0.0.1', port=6379, db=1, decode_responses=True)
 
@@ -14,7 +15,11 @@ app = FastAPI()
 
 class Data(BaseModel):
     auth_token: str
-    user_resp: str
+    question: str
+    fromSource: str
+    prev_questions:list
+    employee_id :str
+    session_id :int
 
 
 invalidResponseQuestions = {"from_date": "please enter in following format(DD-MM-YYY)",
@@ -44,6 +49,12 @@ questionsList = ["from_date", "to_date", "reason", "leave_type", "apply_partial_
 
 ttl_in_seconds = 86400  # one day
 
+third_party_url = "https://testnhm.nslhub.com/backend_services/api/external_endpoints/create_leave_record"
+
+headers = {
+    'Content-Type': 'application/json',
+
+    }
 
 def validate_the_response(key, response):
     pattermatch = regexforEachQuestions[key].search(response)
@@ -88,9 +99,9 @@ def store(user_id, arg, response):
     #print(curr_value)
 
 
-def create_user(user_id):
+def create_user(auth_token, employee_id):
     mapping = {
-        #"auth_token":user_id, #session_id
+        "auth_token":auth_token, 
         "from_date": "",
         "to_date": "",
         "reason": "",
@@ -102,8 +113,8 @@ def create_user(user_id):
         "index": 0,
 
     }
-    r.hset(user_id, mapping=mapping)
-    r.expire(user_id, ttl_in_seconds)
+    r.hset(employee_id, mapping=mapping)
+    r.expire(employee_id, ttl_in_seconds)
 
 
 def get_question_for_key(key):
@@ -161,7 +172,7 @@ def saveData(user_id):
     partialLeaveCount = 0
 
     for key in data:
-        if key == "partial_leaves_date" or key == "partial_leaves_time" or key == "index":
+        if key == "partial_leaves_date" or key == "partial_leaves_time" or key == "index" :
             continue
 
         elif key == "apply_partial_leave":
@@ -195,27 +206,38 @@ def saveData(user_id):
     endDate = datetime.strptime(data['to_date'], "%d-%m-%Y").date()
     noOfDays = (endDate-startDate).days+1-partialLeaveCount
     body['no_leaves'] = noOfDays
-    body['auth_token']="gAAAAABlbsHhQAh_8x0ZQo-gphRMDCbRxYa7g6Br-zqg0EEr8YZS1Wgf_YicDfJj2-RsUptR0zmaP0x5s3bPNl3Nr17ImQX59PgR0FAn-KPTPzX0bwetX89GGFbc0XxFPXEVWpQgEiVo"
+    
     
     ###
     
-    third_party_url = "https://testnhm.nslhub.com/backend_services/api/external_endpoints/create_leave_record"
+
 
     payload = json.dumps(body)
-    headers = {
-    'Content-Type': 'application/json',
-    'Authorization': 'Token ade10f8ac2569168eb6735f548a52c1b9eb6039d'
-    }
-
+   
     try:
-        response = requests.request("POST", third_party_url, headers=headers, data=payload)
-
+        response = requests.request("POST", third_party_url,headers=headers, data=payload)
+        print(response.json()['dt'])
+        r.delete(user_id)
+        return {"answer":"Leave applied successfully",
+                "confidence_high":True,
+                "response_type":"text"}
+        
     except Exception as e:
-        return({"message": f"An error occurred: {e}"})
+        try:
+            #time.sleep(5) #sleep for 5 secs and retry 
+            response = requests.request("POST", third_party_url, data=payload)
+            print(response.json()['dt'])
+            return {"answer":"Leave applied successfully",
+                    "confidence_high":True,
+                    "response_type":"text"}
+        
+        except Exception as e:
+            r.delete(user_id)
+            return {"answer": "An error occurred while applying leave...... please try again later",
+                    "confidence_high":True,
+                    "response_type":"text"}
 
-    print(response.text)
     
-    return ("Leave applied successfully")
 
     # Call NHmind Apply leave post request
     # URL of the third-party endpoint
@@ -248,24 +270,26 @@ async def health_check():
 
 @app.post("/apply_leave")
 async def apply_leave(data: Data):
-    user_id = data.auth_token
-    user_resp = data.user_resp
+    auth_token = data.auth_token
+    user_resp = data.question
+    employee_id=data.employee_id
 
-    if user_exists(user_id):
-        param = get_curr_param(user_id)
+    if user_exists(employee_id):
+        param = get_curr_param(employee_id)
         patternMatch = validate_the_response(param, user_resp)
         if (patternMatch[0]):
             try:
-                store(user_id, param, patternMatch[1])
+                store(employee_id, param, patternMatch[1])
             except:
-                return invalidDatavalidationQuestions[param]
+                return {"act_api": invalidDatavalidationQuestions[param]}
         else:
-            return invalidResponseQuestions[param]
+            return {"act_api": invalidResponseQuestions[param]}
+        
     else:
-        create_user(user_id)
+        create_user(auth_token, employee_id)
 
-    next_question = get_next_question(user_id)
-    return next_question
+    next_question = get_next_question(employee_id)
+    return {"act_api":next_question}
 
 if __name__ == '__main__':
     uvicorn.run('lms_main:app', host='127.0.0.1',
