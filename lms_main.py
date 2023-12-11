@@ -211,9 +211,12 @@ def saveData(user_id):
     ###
     
 
-
+    print(body)
+    return {"answer":"Leave applied successfully",
+                    "confidence_high":True,
+                    "response_type":"text"}
     payload = json.dumps(body)
-   
+    """
     try:
         response = requests.request("POST", third_party_url,headers=headers, data=payload)
         print(response.json()['dt'])
@@ -238,7 +241,7 @@ def saveData(user_id):
                     "response_type":"text"}
 
     
-
+    """
     # Call NHmind Apply leave post request
     # URL of the third-party endpoint
     
@@ -271,7 +274,7 @@ async def health_check():
 @app.post("/apply_leave")
 async def apply_leave(data: Data):
     auth_token = data.auth_token
-    user_resp = data.question
+    user_resp = data.question[4:].strip()
     employee_id=data.employee_id
 
     if user_exists(employee_id):
@@ -281,15 +284,23 @@ async def apply_leave(data: Data):
             try:
                 store(employee_id, param, patternMatch[1])
             except:
-                return {"act_api": invalidDatavalidationQuestions[param]}
+                return {"answer": invalidDatavalidationQuestions[param],
+                        "confidence_high":True,
+                        "response_type":"text"
+                        }
+                        
         else:
-            return {"act_api": invalidResponseQuestions[param]}
+            return {"answer": invalidResponseQuestions[param],
+                    "confidence_high":True,
+                    "response_type":"text"}
         
     else:
         create_user(auth_token, employee_id)
 
     next_question = get_next_question(employee_id)
-    return {"act_api":next_question}
+    return {"answer":next_question,
+            "confidence_high":True,
+            "response_type":"text"}
 
 if __name__ == '__main__':
     uvicorn.run('lms_main:app', host='127.0.0.1',
