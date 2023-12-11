@@ -49,7 +49,7 @@ questionsList = ["from_date", "to_date", "reason", "leave_type", "apply_partial_
 
 ttl_in_seconds = 86400  # one day
 
-third_party_url = "https://testnhm.nslhub.com/backend_services/api/external_endpoints/create_leave_record"
+third_party_url = "https://nhmind.nslhub.com/backend_services/api/create_leave_record"
 
 headers = {
     'Content-Type': 'application/json',
@@ -124,8 +124,8 @@ def get_question_for_key(key):
                "leave_type": "Do you want to apply for consolidated or special leave?",
                "apply_partial_leave": "Any partial leaves?",
                "partial_leaves_date": "Enter the date in following format (DD-MM-YYYY)",
-               "partial_leaves_time": "Specify the time (forenoon or Afternoon or Working)",
-                "other_partial_leave":"Any other partial leaves"
+               "partial_leaves_time": "Specify the time (Forenoon or Afternoon or Working)",
+                "other_partial_leave":"Any other partial leaves ?"
                }
     return mapping[key]
 
@@ -212,36 +212,30 @@ def saveData(user_id):
     
 
     print(body)
-    return {"answer":"Leave applied successfully",
-                    "confidence_high":True,
-                    "response_type":"text"}
+    
     payload = json.dumps(body)
-    """
+    
     try:
         response = requests.request("POST", third_party_url,headers=headers, data=payload)
         print(response.json()['dt'])
         r.delete(user_id)
-        return {"answer":"Leave applied successfully",
-                "confidence_high":True,
-                "response_type":"text"}
+        return "Leave applied successfully"
         
     except Exception as e:
         try:
             #time.sleep(5) #sleep for 5 secs and retry 
             response = requests.request("POST", third_party_url, data=payload)
             print(response.json()['dt'])
-            return {"answer":"Leave applied successfully",
-                    "confidence_high":True,
-                    "response_type":"text"}
+            r.delete(user_id)
+            return "Leave applied successfully"
         
         except Exception as e:
             r.delete(user_id)
-            return {"answer": "An error occurred while applying leave...... please try again later",
-                    "confidence_high":True,
-                    "response_type":"text"}
+            return "An error occurred while applying leave...... please try again later"
+                    
 
     
-    """
+    
     # Call NHmind Apply leave post request
     # URL of the third-party endpoint
     
